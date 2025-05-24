@@ -20,14 +20,22 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           PROJECT_NAME="AI Prompts Project Management"
-          # GraphQL query to list projects
-          QUERY_LIST='{"query":"query { repository(owner: \"$OWNER\", name: \"$(basename $REPO)\") { projectsV2(first: 100) { nodes { id title } } } }"}'
+          REPO_NAME="$(echo $REPO | cut -d'/' -f2)"
+          # Build GraphQL query with proper variable substitution
+          QUERY_LIST=$(cat <<EOF
+{"query":"query { repository(owner: \"$OWNER\", name: \"$REPO_NAME\") { projectsV2(first: 100) { nodes { id title } } } }"}
+EOF
+)
           RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_LIST" https://api.github.com/graphql)
           echo "Raw GraphQL response: $RESPONSE"
           PROJECT_ID=$(echo "$RESPONSE" | jq -r ".data.repository.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
             echo "Creating new GitHub Project (beta)..."
-            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$(curl -s -H 'Authorization: bearer $GH_TOKEN' https://api.github.com/users/$OWNER | jq -r .id)'\", title: \"$PROJECT_NAME\"}) { projectV2 { id title } } }"}'
+            OWNER_ID=$(curl -s -H "Authorization: bearer $GH_TOKEN" https://api.github.com/users/$OWNER | jq -r .id)
+            QUERY_CREATE=$(cat <<EOF
+{"query":"mutation { createProjectV2(input: {ownerId: \"$OWNER_ID\", title: \"$PROJECT_NAME\"}) { projectV2 { id title } } }"}
+EOF
+)
             curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql
             echo "Project created."
           else
