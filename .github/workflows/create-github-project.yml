@@ -13,17 +13,20 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gh jq
-      - name: Create project if not exists
+      - name: Create classic project board if not exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           PROJECT_NAME="AI Prompts Project Management"
-          echo "Listing projects for this repository:"
-          gh project list --repo "$GITHUB_REPOSITORY" --format json > projects.json
-          cat projects.json
-          PROJECT_EXISTS=$(jq -r ".[] | select(.title == \"$PROJECT_NAME\") | .id" projects.json)
-          if [ -z "$PROJECT_EXISTS" ]; then
-            gh project create --repo "$GITHUB_REPOSITORY" --title "$PROJECT_NAME" --format board
+          API_URL="https://api.github.com/repos/$REPO/projects"
+          # List existing classic projects
+          PROJECT_ID=$(curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" "$API_URL" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id")
+          if [ -z "$PROJECT_ID" ]; then
+            echo "Creating classic project board..."
+            curl -s -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" \
+              "$API_URL" \
+              -d "{\"name\":\"$PROJECT_NAME\",\"body\":\"Automated project board for AI Prompts\"}"
             echo "Project created."
           else
             echo "Project already exists."
