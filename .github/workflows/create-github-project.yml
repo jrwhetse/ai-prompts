@@ -20,15 +20,15 @@ jobs:
           PROJECT_NAME="AI Prompts Project Management"
           OWNER="jrwhetse"
           REPO_NAME="ai-prompts"
-          # Build GraphQL query with hardcoded owner and repo name
-          QUERY_LIST='{"query":"query { repository(owner: \"'$OWNER'\", name: \"'$REPO_NAME'\") { projectsV2(first: 100) { nodes { id title } } } }"}'
-          RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_LIST" https://api.github.com/graphql)
-          echo "Raw GraphQL response: $RESPONSE"
-          PROJECT_ID=$(echo "$RESPONSE" | jq -r ".data.repository.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
+          # Get repository node ID
+          REPO_NODE_QUERY='{"query":"query { repository(owner: \"'$OWNER'\", name: \"'$REPO_NAME'\") { id projectsV2(first: 100) { nodes { id title } } } }"}'
+          REPO_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$REPO_NODE_QUERY" https://api.github.com/graphql)
+          echo "Raw GraphQL response: $REPO_RESPONSE"
+          REPO_NODE_ID=$(echo "$REPO_RESPONSE" | jq -r ".data.repository.id")
+          PROJECT_ID=$(echo "$REPO_RESPONSE" | jq -r ".data.repository.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
-            echo "Creating new GitHub Project (beta)..."
-            OWNER_ID=$(curl -s -H "Authorization: bearer $GH_TOKEN" https://api.github.com/users/$OWNER | jq -r .id)
-            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$OWNER_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
+            echo "Creating new GitHub Project (beta) at repository level..."
+            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$REPO_NODE_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
             curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql
             echo "Project created."
           else
