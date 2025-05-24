@@ -1,45 +1,40 @@
-name: Create GitHub Project
+name: Create Classic GitHub Project
 
 on:
   workflow_dispatch:
 
 jobs:
-  create-project:
+  create-classic-project:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up GitHub CLI
+      - name: Set up jq
         run: |
           sudo apt-get update
-          sudo apt-get install -y gh jq
-      - name: Create new GitHub Project (beta) if not exists
+          sudo apt-get install -y jq
+      - name: Create Classic GitHub Project if not exists
         env:
           GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
         run: |
           PROJECT_NAME="AI Prompts Project Management"
           ORG="ByLightSDC"
-          # Get organization node ID
-          ORG_NODE_ID=$(curl -s -H "Authorization: bearer $GH_TOKEN" https://api.github.com/orgs/$ORG | jq -r .node_id)
-          # Check for existing org projects
-          ORG_PROJECTS_QUERY='{"query":"query { organization(login: \"'$ORG'\") { projectsV2(first: 100) { nodes { id title } } } }"}'
-          ORG_PROJECTS_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$ORG_PROJECTS_QUERY" https://api.github.com/graphql)
-          echo "Raw GraphQL response: $ORG_PROJECTS_RESPONSE"
-          PROJECT_ID=$(echo "$ORG_PROJECTS_RESPONSE" | jq -r ".data.organization.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
+          REPO="AI-test"
+          # Check for existing classic projects
+          PROJECTS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$ORG/$REPO/projects")
+          PROJECT_ID=$(echo "$PROJECTS" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
-            echo "Creating new organization-level GitHub Project (beta)..."
-            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$ORG_NODE_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
-            CREATE_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql)
-            echo "Create mutation response: $CREATE_RESPONSE"
+            echo "Creating new classic GitHub Project (repo-level)..."
+            CREATE_RESPONSE=$(curl -s -X POST -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github.inertia-preview+json" \
+              -d '{"name": "'$PROJECT_NAME'", "body": "Automated classic project board."}' \
+              "https://api.github.com/repos/$ORG/$REPO/projects")
+            echo "Create response: $CREATE_RESPONSE"
             ERRORS=$(echo "$CREATE_RESPONSE" | jq -r '.errors | select(. != null)')
             if [ -n "$ERRORS" ] && [ "$ERRORS" != "null" ]; then
               echo "Error(s) from GitHub API: $ERRORS"
               exit 1
             fi
-            echo "Project created."
+            echo "Classic project created."
           else
-            echo "Project already exists."
+            echo "Classic project already exists."
           fi
-
-# Trivial change to force workflow re-indexing
-# Last updated: 2025-05-24
