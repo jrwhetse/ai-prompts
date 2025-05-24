@@ -1,0 +1,25 @@
+name: Create GitHub Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up GitHub CLI
+        uses: cli/cli-action@v2
+      - name: Create project if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PROJECT_NAME="AI Prompts Project Management"
+          PROJECT_EXISTS=$(gh project list --owner "$GITHUB_REPOSITORY_OWNER" --format json | jq -r ".[] | select(.title == \"$PROJECT_NAME\") | .id")
+          if [ -z "$PROJECT_EXISTS" ]; then
+            gh project create --title "$PROJECT_NAME" --owner "$GITHUB_REPOSITORY_OWNER" --format board
+            echo "Project created."
+          else
+            echo "Project already exists."
+          fi
