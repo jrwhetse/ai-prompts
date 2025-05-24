@@ -10,7 +10,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up GitHub CLI
-        uses: cli/cli-action@v2
+        uses: actions/setup-gh@v4
       - name: Create project if not exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
