@@ -1,0 +1,12 @@
+messages:
+  - role: system
+    content: ''
+  - role: user
+    content: >-
+      Act as a project manager and build a GitHub Project for this project with
+      Title AI-Prompts. 
+
+      Use GitHub Workflows to Achieve this Action.
+
+      Commit changes and execute the workflow
+model: openai/gpt-4o
