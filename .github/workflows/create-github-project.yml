@@ -13,22 +13,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gh jq
-      - name: Create classic project board if not exists
+      - name: Create new GitHub Project (beta) if not exists
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
           REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           PROJECT_NAME="AI Prompts Project Management"
-          API_URL="https://api.github.com/repos/$REPO/projects"
-          # List existing classic projects
-          RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" "$API_URL")
-          echo "Raw API response: $RESPONSE"
-          PROJECT_ID=$(echo "$RESPONSE" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id")
+          # GraphQL query to list projects
+          QUERY_LIST='{"query":"query { repository(owner: \"$OWNER\", name: \"$(basename $REPO)\") { projectsV2(first: 100) { nodes { id title } } } }"}'
+          RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_LIST" https://api.github.com/graphql)
+          echo "Raw GraphQL response: $RESPONSE"
+          PROJECT_ID=$(echo "$RESPONSE" | jq -r ".data.repository.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
-            echo "Creating classic project board..."
-            curl -s -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" \
-              "$API_URL" \
-              -d "{\"name\":\"$PROJECT_NAME\",\"body\":\"Automated project board for AI Prompts\"}"
+            echo "Creating new GitHub Project (beta)..."
+            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$(curl -s -H 'Authorization: bearer $GH_TOKEN' https://api.github.com/users/$OWNER | jq -r .id)'\", title: \"$PROJECT_NAME\"}) { projectV2 { id title } } }"}'
+            curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql
             echo "Project created."
           else
             echo "Project already exists."
