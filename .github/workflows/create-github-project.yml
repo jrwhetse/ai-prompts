@@ -21,7 +21,9 @@ jobs:
           PROJECT_NAME="AI Prompts Project Management"
           API_URL="https://api.github.com/repos/$REPO/projects"
           # List existing classic projects
-          PROJECT_ID=$(curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" "$API_URL" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id")
+          RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" "$API_URL")
+          echo "Raw API response: $RESPONSE"
+          PROJECT_ID=$(echo "$RESPONSE" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
             echo "Creating classic project board..."
             curl -s -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.inertia-preview+json" \
