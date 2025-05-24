@@ -29,7 +29,13 @@ jobs:
           if [ -z "$PROJECT_ID" ]; then
             echo "Creating new GitHub Project (beta) at repository level..."
             QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$REPO_NODE_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
-            curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql
+            CREATE_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql)
+            echo "Create mutation response: $CREATE_RESPONSE"
+            ERRORS=$(echo "$CREATE_RESPONSE" | jq -r '.errors | select(. != null)')
+            if [ -n "$ERRORS" ] && [ "$ERRORS" != "null" ]; then
+              echo "Error(s) from GitHub API: $ERRORS"
+              exit 1
+            fi
             echo "Project created."
           else
             echo "Project already exists."
