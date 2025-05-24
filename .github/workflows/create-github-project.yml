@@ -19,16 +19,16 @@ jobs:
         run: |
           PROJECT_NAME="AI Prompts Project Management"
           OWNER="jrwhetse"
-          # Get user node ID
-          USER_NODE_ID=$(curl -s -H "Authorization: bearer $GH_TOKEN" https://api.github.com/users/$OWNER | jq -r .node_id)
-          # Check for existing user projects
-          USER_PROJECTS_QUERY='{"query":"query { user(login: \"'$OWNER'\") { projectsV2(first: 100) { nodes { id title } } } }"}'
-          USER_PROJECTS_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$USER_PROJECTS_QUERY" https://api.github.com/graphql)
-          echo "Raw GraphQL response: $USER_PROJECTS_RESPONSE"
-          PROJECT_ID=$(echo "$USER_PROJECTS_RESPONSE" | jq -r ".data.user.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
+          REPO_NAME="ai-prompts"
+          # Get repository node ID
+          REPO_NODE_QUERY='{"query":"query { repository(owner: \"'$OWNER'\", name: \"'$REPO_NAME'\") { id projectsV2(first: 100) { nodes { id title } } } }"}'
+          REPO_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$REPO_NODE_QUERY" https://api.github.com/graphql)
+          echo "Raw GraphQL response: $REPO_RESPONSE"
+          REPO_NODE_ID=$(echo "$REPO_RESPONSE" | jq -r ".data.repository.id")
+          PROJECT_ID=$(echo "$REPO_RESPONSE" | jq -r ".data.repository.projectsV2.nodes[] | select(.title == \"$PROJECT_NAME\") | .id")
           if [ -z "$PROJECT_ID" ]; then
-            echo "Creating new user-level GitHub Project (beta)..."
-            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$USER_NODE_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
+            echo "Creating new GitHub Project (beta) at repository level..."
+            QUERY_CREATE='{"query":"mutation { createProjectV2(input: {ownerId: \"'$REPO_NODE_ID'\", title: \"'$PROJECT_NAME'\"}) { projectV2 { id title } } }"}'
             CREATE_RESPONSE=$(curl -s -H "Authorization: bearer $GH_TOKEN" -H "Content-Type: application/json" -d "$QUERY_CREATE" https://api.github.com/graphql)
             echo "Create mutation response: $CREATE_RESPONSE"
             ERRORS=$(echo "$CREATE_RESPONSE" | jq -r '.errors | select(. != null)')
