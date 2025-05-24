@@ -18,7 +18,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
         run: |
           PROJECT_NAME="AI Prompts Project Management"
-          OWNER="ByLightSDC"
+          OWNER="jrwhetse"
           REPO_NAME="ai-prompts"
           # Build GraphQL query with hardcoded owner and repo name
           QUERY_LIST='{"query":"query { repository(owner: \"'$OWNER'\", name: \"'$REPO_NAME'\") { projectsV2(first: 100) { nodes { id title } } } }"}'
