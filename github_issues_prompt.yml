@@ -108,4 +108,5 @@ iteration_and_memory:
   - On re-execution, review previous logs; if the process failed, analyze the error, refine the prompt or CLI commands, and retry.
   - Update the prompt or scripts as needed to handle new edge cases or errors, improving robustness over time.
 
+model: openai/gpt-4o
 # End of prompt
