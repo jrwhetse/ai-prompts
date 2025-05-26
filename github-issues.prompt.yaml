@@ -44,21 +44,21 @@ execution_steps:
   - For each issue in the issues list:
       - Use `gh issue list` to check if an issue with the same title already exists (open or closed).
       - If an issue exists, skip creation and use its number for subsequent steps.
-      - If not, use `gh issue create` to create the issue in the specified repo and capture the created issue URL.
+      - If not, use `gh issue create` to create the issue in the specified repo and capture the created issue number.
       - (If subtasks) Use markdown checkboxes in the issue body, or create child issues and cross-link, applying the same deduplication logic to subtasks.
-      - Use `gh project item-add <project-number> --owner <owner> --url <issue-url>` to add the issue to the project board in the "Todo" status (for Projects Beta).
+      - Use `gh project item-add` or equivalent to add the issue to the project board in the "Todo" status.
   - Verify that all issues appear on the board in the correct status.
   - On error, analyze the CLI or API feedback, update commands or input data, and retry.
 
 example_gh_cli_script: |
   #!/bin/bash
-  # Inputs: REPO, PROJECT_NUMBER, OWNER, ISSUES (as JSON)
+  # Inputs: REPO, PROJECT, STATUS, ISSUES (as JSON)
   # Requires: gh CLI, jq
 
   # Example:
   # REPO="owner/repo"
-  # PROJECT_NUMBER=4
-  # OWNER="owner"
+  # PROJECT="My Project"
+  # STATUS="Todo"
   # ISSUES='[{"title":"Issue 1","description":"Desc 1","subtasks":[{"title":"Sub 1"}]}]'
 
   for issue in $(echo "$ISSUES" | jq -c '.[]'); do
@@ -68,32 +68,31 @@ example_gh_cli_script: |
     existing=$(gh issue list -R "$REPO" --state all --search "$title" --json title,number | jq -r ".[] | select(.title==\"$title\") | .number")
     if [[ -n "$existing" ]]; then
       issue_number="$existing"
-      issue_url="https://github.com/$REPO/issues/$issue_number"
       echo "Issue '$title' already exists as #$issue_number"
     else
       issue_url=$(gh issue create -R "$REPO" --title "$title" --body "$desc" --json url | jq -r '.url')
       issue_number=$(basename $issue_url)
       echo "Created issue '$title' as #$issue_number"
     fi
-    # Add to project board (Projects Beta)
-    gh project item-add $PROJECT_NUMBER --owner $OWNER --url "$issue_url"
+    # Add to project board
+    gh project item-add --project "$PROJECT" --content-id "$issue_number"
+    # Set status (requires API or gh project automation)
     # Handle subtasks if present
     subtasks=$(echo $issue | jq -c '.subtasks // []')
     if [[ "$subtasks" != "[]" ]]; then
-      for sub in $(echo $subtasks | jq -c '.[]'); do
+      for sub in $(echo "$subtasks" | jq -c '.[]'); do
         st_title=$(echo $sub | jq -r '.title')
         st_desc=$(echo $sub | jq -r '.description // empty')
         existing_sub=$(gh issue list -R "$REPO" --state all --search "$st_title" --json title,number | jq -r ".[] | select(.title==\"$st_title\") | .number")
         if [[ -n "$existing_sub" ]]; then
           sub_number="$existing_sub"
-          sub_url="https://github.com/$REPO/issues/$sub_number"
           echo "Subtask '$st_title' already exists as #$sub_number"
         else
           sub_url=$(gh issue create -R "$REPO" --title "$st_title" --body "$st_desc" --json url | jq -r '.url')
           sub_number=$(basename $sub_url)
           echo "Created subtask '$st_title' as #$sub_number"
         fi
-        gh project item-add $PROJECT_NUMBER --owner $OWNER --url "$sub_url"
+        gh project item-add --project "$PROJECT" --content-id "$sub_number"
         # Optionally, link subtask in parent issue
         gh issue comment "$issue_number" -R "$REPO" --body "Subtask: $sub_url"
       done
