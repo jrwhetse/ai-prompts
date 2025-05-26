@@ -1,0 +1,111 @@
+# AI Prompt for Automated GitHub Issue Creation and Project Board Management
+
+description: |
+  This prompt is designed to be executed via GitHub Copilot or a compatible LLM, ensuring reliable iterative improvements on subsequent executions—learning from previous runs and fixing any encountered problems. The workflow automates the generation of GitHub issues and subtasks from a user-supplied topic list, adding each issue to a specified Project board in the "Todo" status. The process supports both GitHub CLI (gh) and GitHub Actions workflows. All dependencies and user inputs are clearly defined.
+  The prompt is idempotent: it checks for existing issues before creating new ones and will not duplicate issues if they already exist, allowing safe re-execution multiple times.
+  The AI must analyze any plain text or paragraph-formatted instructions supplied for issues, extract and reformat them to match the structured input format below (see `user_inputs.issues`).
+
+instructions:
+  - Always maintain consistency and memory of previous successful executions. If errors or problems are encountered, analyze the failure, update the prompt or process, and re-execute until successful.
+  - Use the supplied user inputs to generate a high-quality set of GitHub issues and subtasks, each mapped to the appropriate project and status.
+  - When the issues are provided in plain text or paragraph form, analyze and reformat them into the structured format required by `user_inputs.issues`. Each main topic should become a main issue; if the text contains sub-tasks, actions, or steps, these should become subtasks.
+  - Before creating each issue, search the repository for open or closed issues with the same title. If an issue with the exact title exists, skip creation and use the existing issue for subsequent steps (e.g., project board addition, subtask linking).
+  - Each generated issue should automatically be added to the specified GitHub Project board in the "Todo" status.
+  - If any required information is missing, prompt the user for: repository name, organization (if applicable), GitHub Project name, Project board name (or number), and the list of issue topics (including any subtasks in a nested format).
+  - All commands and scripts should be executable via GitHub CLI on a local system, or via a GitHub Actions workflow.
+  - Ensure all dependencies are listed and installed as needed.
+  - Provide clear, copy-pastable CLI commands or workflow steps for each action.
+  - If a step fails, analyze the CLI or API feedback, update commands or input data, and retry, updating the prompt iteratively for future reliability.
+
+user_inputs:
+  - repository: "The GitHub repository (format: owner/repo)"
+  - project_name: "The name or number of the GitHub Project board"
+  - board_status: "The status column for new issues (default: Todo)"
+  - issues:
+      - title: "Main issue title"
+        description: "Optional description"
+        subtasks:
+          - title: "Subtask title"
+            description: "Optional subtask description"
+
+prerequisites:
+  - gh CLI installed and authenticated with appropriate scopes (repo, project)
+  - jq (for JSON processing in shell scripts, if needed)
+  - User must have write access to the repo and project
+
+dependencies:
+  - gh: https://cli.github.com/
+  - jq: https://stedolan.github.io/jq/
+  - For GitHub Actions: actions/github-script and actions/checkout
+
+execution_steps:
+  - Validate that gh CLI is installed and authenticated.
+  - Ensure required inputs are provided (repository, project name/number, issues).
+  - For each issue in the issues list:
+      - Use `gh issue list` to check if an issue with the same title already exists (open or closed).
+      - If an issue exists, skip creation and use its number for subsequent steps.
+      - If not, use `gh issue create` to create the issue in the specified repo and capture the created issue number.
+      - (If subtasks) Use markdown checkboxes in the issue body, or create child issues and cross-link, applying the same deduplication logic to subtasks.
+      - Use `gh project item-add` or equivalent to add the issue to the project board in the "Todo" status.
+  - Verify that all issues appear on the board in the correct status.
+  - On error, analyze the CLI or API feedback, update commands or input data, and retry.
+
+example_gh_cli_script: |
+  #!/bin/bash
+  # Inputs: REPO, PROJECT, STATUS, ISSUES (as JSON)
+  # Requires: gh CLI, jq
+
+  # Example: 
+  # REPO="owner/repo"
+  # PROJECT="My Project"
+  # STATUS="Todo"
+  # ISSUES='[{"title":"Issue 1","description":"Desc 1","subtasks":[{"title":"Sub 1"}]}]'
+
+  for issue in $(echo "$ISSUES" | jq -c '.[]'); do
+    title=$(echo $issue | jq -r '.title')
+    desc=$(echo $issue | jq -r '.description // empty')
+    # Check if issue exists
+    existing=$(gh issue list -R "$REPO" --state all --search "$title" --json title,number | jq -r ".[] | select(.title==\"$title\") | .number")
+    if [[ -n "$existing" ]]; then
+      issue_number="$existing"
+      echo "Issue '$title' already exists as #$issue_number"
+    else
+      issue_url=$(gh issue create -R "$REPO" --title "$title" --body "$desc" --json url | jq -r '.url')
+      issue_number=$(basename $issue_url)
+      echo "Created issue '$title' as #$issue_number"
+    fi
+    # Add to project board
+    gh project item-add --project "$PROJECT" --content-id "$issue_number"
+    # Set status (requires API or gh project automation)
+    # Handle subtasks if present
+    subtasks=$(echo $issue | jq -c '.subtasks // []')
+    if [[ "$subtasks" != "[]" ]]; then
+      for sub in $(echo "$subtasks" | jq -c '.[]'); do
+        st_title=$(echo $sub | jq -r '.title')
+        st_desc=$(echo $sub | jq -r '.description // empty')
+        existing_sub=$(gh issue list -R "$REPO" --state all --search "$st_title" --json title,number | jq -r ".[] | select(.title==\"$st_title\") | .number")
+        if [[ -n "$existing_sub" ]]; then
+          sub_number="$existing_sub"
+          echo "Subtask '$st_title' already exists as #$sub_number"
+        else
+          sub_url=$(gh issue create -R "$REPO" --title "$st_title" --body "$st_desc" --json url | jq -r '.url')
+          sub_number=$(basename $sub_url)
+          echo "Created subtask '$st_title' as #$sub_number"
+        fi
+        gh project item-add --project "$PROJECT" --content-id "$sub_number"
+        # Optionally, link subtask in parent issue
+        gh issue comment "$issue_number" -R "$REPO" --body "Subtask: $sub_url"
+      done
+    fi
+  done
+
+github_actions_implementation: |
+  # Provide a sample GitHub Actions workflow using actions/github-script to automate the same process.
+  # Ensure that all required inputs are passed as workflow inputs or secrets.
+
+iteration_and_memory:
+  - After each execution, store a log of successes and failures.
+  - On re-execution, review previous logs; if the process failed, analyze the error, refine the prompt or CLI commands, and retry.
+  - Update the prompt or scripts as needed to handle new edge cases or errors, improving robustness over time.
+
+# End of prompt
