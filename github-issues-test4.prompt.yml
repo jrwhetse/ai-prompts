@@ -1,0 +1,17 @@
+messages:
+  - role: system
+    content: ''
+  - role: user
+    content: >+
+      As a project manager, I would like to import GitHub Issues into a GitHub
+      project using either GitHub Workflow or GitHub CLI
+
+
+      The script should ensure the GH CLI is installed. Do not allow duplicate
+      issues. As user for the github project name, the name or link to the
+      github project board and link all issues to the github project board and
+      set status to an existing board status of Todo. Accept as input, a
+      paragraph and extract requirements and format these requirements in github
+      issues format to include title, description and subtasks.
+
+model: openai/gpt-4o
