@@ -1,0 +1,2 @@
+# Ignore target directory (commonly used for build artifacts)
+target/
