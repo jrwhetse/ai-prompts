@@ -1,0 +1,4 @@
+/workspaces/ai-prompts/sb/src/main/java/com/vha/sb/controller/AppointmentController.java
+/workspaces/ai-prompts/sb/src/main/java/com/vha/sb/service/AppointmentService.java
+/workspaces/ai-prompts/sb/src/main/java/com/vha/sb/SbApplication.java
+/workspaces/ai-prompts/sb/src/main/java/com/vha/sb/dto/AppointmentDTO.java
