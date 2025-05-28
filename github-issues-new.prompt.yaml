@@ -52,10 +52,6 @@ project_manager_gh_cli_prompt:
           on_failure:
             prompt: "The specified Project Board '{project_board}' does not exist for owner '{github_owner}'. Please create it via the GitHub UI and press Enter to continue: "
             wait_for_user: true
-        - description: Manual step: Set issue status to 'Todo' in classic project board
-          on_failure:
-            prompt: "Setting issue status to 'Todo' in classic project boards is not supported by the GitHub CLI. Please set the issue status to 'Todo' manually via the GitHub UI and press Enter to continue: "
-            wait_for_user: true
 
     - name: Parse Requirements
       interactive: true
@@ -63,7 +59,7 @@ project_manager_gh_cli_prompt:
         - description: |
             Parse 'requirements_paragraph' into distinct, actionable requirements. For each requirement, generate:
               - issue_title: A concise, formal, and professional title suitable for a GitHub Issue.
-              - issue_description: The description must be well-formatted for GitHub Issues (use Markdown for lists, sections, etc. as appropriate). Do not include literal \n in the description; instead, use actual carriage returns (line breaks) so the output is ready for GitHub Issues.
+              - issue_description: The description must be well-formatted for GitHub Issues and should include acceptance criteria. (use Markdown for lists, sections, etc. as appropriate). Do not include literal \n in the description; instead, use actual carriage returns (line breaks) so the output is ready for GitHub Issues.
         # If 'confirm_each_issue' is true, display the suggested issue title and description to the user for confirmation or editing
         - description: For each parsed requirement, if 'confirm_each_issue' is true, display the suggested issue title and description to the user for confirmation or editing
           prompt: "Review the following issue draft. Would you like to edit the title or description? (Y/N): "
@@ -74,7 +70,7 @@ project_manager_gh_cli_prompt:
               - "Please provide the new issue description: "
             wait_for_user: true
 
-    - name: Prevent Duplicate Issues
+    - name: Issue Creation
       interactive: true
       actions:
         - description: For each parsed requirement, search for open issues with similar title
@@ -86,10 +82,6 @@ project_manager_gh_cli_prompt:
               action: "Skip creation for this requirement"
             if_no:
               action: "Proceed to create issue"
-
-    - name: Issue Creation
-      interactive: true
-      actions:
         - description: For each non-duplicate requirement, create issue automatically if 'confirm_each_issue' is false; otherwise, create after confirmation
           command: gh issue create --repo {github_repository} --title "{issue_title}" --body "{issue_description}"
           on_failure:
@@ -112,12 +104,19 @@ project_manager_gh_cli_prompt:
           on_failure:
             prompt: "The specified Project Board '{project_board}' does not exist for owner '{github_owner}'. Please create it via the GitHub UI and press Enter to continue: "
             wait_for_user: true
+        - description: Extract owner from 'github_repository' (format: owner/repo) and use as --owner argument for all project board commands
+          action: |
+            Extract the owner by splitting the 'github_repository' input on '/' and use the first part as {github_owner} for all project board commands. This ensures the correct owner is always used automatically, without prompting the user.
         - description: Attempt to add issue to project board (Beta projects)
-          command: gh project item-add {project_number} --url https://github.com/{github_repository}/issues/{issue_number}
+          command: gh project item-add {project_number} --url https://github.com/{github_repository}/issues/{issue_number} --owner {github_owner}
           on_failure:
             prompt: "Could not add issue to the project board using the GitHub CLI. Please add the issue manually via the GitHub UI and press Enter to continue: "
             wait_for_user: true
         - description: Set issue status to 'Todo' in project board (Beta projects)
+          action: |
+            After adding the issue to the project board, retrieve the project board's Status field ID and the 'Todo' option ID. Then, use the following command to set the status:
+            gh project item-edit --project-id {project_id} --id {item_id} --field-id {status_field_id} --single-select-option-id {todo_option_id}
+            Do not use the --owner flag, as it is not supported for this command.
           command: gh project item-edit --project-id {project_id} --id {item_id} --field-id {status_field_id} --single-select-option-id {todo_option_id}
           on_failure:
             prompt: "Could not set issue status to 'Todo' using the GitHub CLI. Please set the status manually via the GitHub UI and press Enter to continue: "
