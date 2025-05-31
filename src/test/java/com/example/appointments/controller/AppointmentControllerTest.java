@@ -36,6 +36,7 @@ class AppointmentControllerTest {
         when(appointmentService.getAllAppointments()).thenReturn(mockList);
         ResponseEntity<List<AppointmentDto>> response = appointmentController.getAllAppointments();
         assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody(), "Response body should not be null");
         assertEquals(1, response.getBody().size());
         AppointmentDto dto = response.getBody().get(0);
         assertEquals(1L, dto.getId());
