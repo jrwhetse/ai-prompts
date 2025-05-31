@@ -1,0 +1,7 @@
+{
+  "name": "AppointmentController-get-monitor",
+  "type": "apm",
+  "query": "avg(last_5m):avg:trace.spring.request{service:appointments,operation_name:GET /appointments} > 0.5",
+  "message": "High latency detected on GET /appointments endpoint.",
+  "tags": ["controller:AppointmentController","endpoint:getAllAppointments"]
+}
