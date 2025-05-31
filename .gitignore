@@ -1,2 +1,49 @@
 # Ignore target directory (commonly used for build artifacts)
 target/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+*.sw?
+*.sublime*
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Maven
+/logs/
+.mvn/
+
+# Others
+*.class
+*.jar
+*.war
+*.ear
+
+# Exclude sensitive files
+*.env
+.env.*
+
+# Exclude test output
+test-output/
+
+# Exclude coverage reports
+coverage/
+.coverage
+
+# Exclude backup files
+*~
+*.bak
+
+# Exclude generated files
+generated/
+
+# Exclude local configuration
+local.properties
