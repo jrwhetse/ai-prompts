@@ -37,6 +37,9 @@ class AppointmentControllerTest {
         ResponseEntity<List<AppointmentDto>> response = appointmentController.getAllAppointments();
         assertEquals(200, response.getStatusCodeValue());
         assertEquals(1, response.getBody().size());
-        assertEquals("Test Appointment", response.getBody().get(0).getTitle());
+        AppointmentDto dto = response.getBody().get(0);
+        assertEquals(1L, dto.getId());
+        assertEquals("Test Appointment", dto.getTitle());
+        assertEquals("2025-05-31T10:00:00", dto.getDateTime());
     }
 }
